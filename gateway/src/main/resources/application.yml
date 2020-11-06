@@ -1,0 +1,33 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1/gw
+
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+
+spring:
+  application:
+    name: Gateway-Service
+
+logging:
+  level:
+    org.example.feign.ColorClient: DEBUG
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: full
+
+app:
+  feign:
+    color:
+      url: ${COLOR_SERVICE_URL:http://localhost:8000}
