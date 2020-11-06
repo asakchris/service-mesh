@@ -30,4 +30,4 @@ feign:
 app:
   feign:
     color:
-      url: ${COLOR_SERVICE_URL:http://localhost:8000}
+      url: http://${COLOR_SERVICE_URL:http://localhost:8000}

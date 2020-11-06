@@ -3,7 +3,7 @@ services:
   gateway:
     image: asakchris/service-mesh-gateway:1.0.0-SNAPSHOT
     environment:
-      - COLOR_SERVICE_URL=http://color-red:8080
+      - COLOR_SERVICE_URL=color-red:8080
     ports:
       - "8080:8080"
       - "8081:8081"

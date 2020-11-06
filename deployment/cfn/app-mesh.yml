@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates app mesh
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+Resources:
+  Mesh:
+    Type: AWS::AppMesh::Mesh
+    Properties:
+      MeshName: !Sub '${Environment}-${Platform}-MESH'
+  RedColorVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: red-color-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 8080
+              Protocol: http
+            HealthCheck:
+              Port: 8081
+              Protocol: http
+              Path: '/actuator/health'
+              HealthyThreshold: 2
+              UnhealthyThreshold: 2
+              TimeoutMillis: 2000
+              IntervalMillis: 5000
+        ServiceDiscovery:
+          DNS:
+            Hostname: 'color-red.internal-dev-am'
+  GreenColorVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: green-color-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 8080
+              Protocol: http
+            HealthCheck:
+              Port: 8081
+              Protocol: http
+              Path: '/actuator/health'
+              HealthyThreshold: 2
+              UnhealthyThreshold: 2
+              TimeoutMillis: 2000
+              IntervalMillis: 5000
+        ServiceDiscovery:
+          DNS:
+            Hostname: 'color-green.internal-dev-am'
+  BlueColorVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: blue-color-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 8080
+              Protocol: http
+            HealthCheck:
+              Port: 8081
+              Protocol: http
+              Path: '/actuator/health'
+              HealthyThreshold: 2
+              UnhealthyThreshold: 2
+              TimeoutMillis: 2000
+              IntervalMillis: 5000
+        ServiceDiscovery:
+          DNS:
+            Hostname: 'color-blue.internal-dev-am'
+  ColorVirtualRouter:
+    Type: AWS::AppMesh::VirtualRouter
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualRouterName: color-vr
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 8080
+              Protocol: http
+  ColorRoute:
+    Type: AWS::AppMesh::Route
+    DependsOn:
+      - ColorVirtualRouter
+      - RedColorVirtualNode
+      - GreenColorVirtualNode
+      - BlueColorVirtualNode
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualRouterName: !GetAtt ColorVirtualRouter.VirtualRouterName
+      RouteName: color-route
+      Spec:
+        HttpRoute:
+          Action:
+            WeightedTargets:
+              - VirtualNode: !GetAtt RedColorVirtualNode.VirtualNodeName
+                Weight: 1
+              - VirtualNode: !GetAtt GreenColorVirtualNode.VirtualNodeName
+                Weight: 1
+              - VirtualNode: !GetAtt BlueColorVirtualNode.VirtualNodeName
+                Weight: 1
+          Match:
+            Prefix: '/'
+  ColorVirtualService:
+    Type: AWS::AppMesh::VirtualService
+    DependsOn:
+      - ColorVirtualRouter
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualServiceName: 'color.internal-dev-am'
+      Spec:
+        Provider:
+          VirtualRouter:
+            VirtualRouterName: !GetAtt ColorVirtualRouter.VirtualRouterName
+
+  GatewayVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    DependsOn:
+      - ColorVirtualService
+    Properties:
+      MeshName: !GetAtt Mesh.MeshName
+      VirtualNodeName: gateway-vn
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: 9080
+              Protocol: http
+        ServiceDiscovery:
+          DNS:
+            Hostname: 'gateway.internal-dev-am'
+        Backends:
+          - VirtualService:
+              VirtualServiceName: !GetAtt ColorVirtualService.VirtualServiceName
+Outputs:
+  Mesh:
+    Description: Mesh Arn
+    Value: !Ref Mesh
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'MeshArn' ] ]

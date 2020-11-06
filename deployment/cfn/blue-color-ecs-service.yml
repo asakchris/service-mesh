@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates blue color services task definition and service
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+  AppName:
+    Type: String
+    Default: 'COLOR-BLUE'
+    Description: Application Name
+  PrivateNamespaceStackName:
+    Type: String
+    Description: Name of the stack which is used to create Private Namespace
+  RoleStackName:
+    Type: String
+    Description: Name of the stack which is used to create Roles
+  EcsClusterStackName:
+    Type: String
+    Description: Name of the stack which is used to create ECS cluster
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+  SecurityGroupStackName:
+    Type: String
+    Description: Name of the stack used to create security group
+Resources:
+  # Cloud watch log group to which container send logs
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ECS/${Environment}/${Platform}/${AppName}'
+      RetentionInDays: 1
+
+  # Service discovery for Gateway service, DnsConfig property specifies the DNS records that are automatically created
+  # in Amazon Route 53 when your Amazon ECS task is registered with the service discovery service
+  DiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: Discovery Service for Gateway service
+      Name: color-blue
+      DnsConfig:
+        NamespaceId:
+          Fn::ImportValue: !Join [ ':', [ !Ref 'PrivateNamespaceStackName', 'ServiceDiscoveryPrivateNamespaceId' ] ]
+        #RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 60
+            Type: A
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  # The task definition. This is a simple metadata description of what container to run,
+  # and what resource requirements it has.
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${Environment}-${Platform}-${AppName}-TD-02'
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'RoleStackName', 'ECSTaskExecutionRoleArn' ] ]
+      TaskRoleArn:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'RoleStackName', 'ECSTaskRoleArn' ] ]
+      ContainerDefinitions:
+        - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
+          Image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
+          DependsOn:
+            ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
+            Condition: HEALTHY
+          PortMappings:
+            - ContainerPort: 8080
+            - ContainerPort: 8081
+          Environment:
+            - Name: APP_COLOR
+              Value: Blue
+            - Name: JAVA_OPTS
+              Value: -XshowSettings:vm -XX:+PrintFlagsFinal
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+        - Name: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
+          Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
+          User: 1337
+          PortMappings:
+            - ContainerPort: 9901
+            - ContainerPort: 15000
+            - ContainerPort: 15001
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 15000
+              HardLimit: 15000
+          HealthCheck:
+            Command: [ "CMD-SHELL","curl -s http://localhost:9901/server_info | grep state | grep -q LIVE" ]
+            Interval: 5
+            Retries: 3
+            StartPeriod: 15
+            Timeout: 2
+          Environment:
+            - Name: APPMESH_VIRTUAL_NODE_NAME
+              Value: !Sub mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-vn
+            - Name: ENABLE_ENVOY_STATS_TAGS
+              Value: 1
+            - Name: ENABLE_ENVOY_XRAY_TRACING
+              Value: 1
+            - Name: ENVOY_LOG_LEVEL
+              Value: debug
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: envoy
+        - Name: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+          Cpu: 32
+          MemoryReservation: 256
+          Image: amazon/aws-xray-daemon
+          User: 1337
+          PortMappings:
+            - ContainerPort: 2000
+              Protocol: udp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: xray
+      ProxyConfiguration:
+        ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
+        Type: APPMESH
+        ProxyConfigurationProperties:
+          - Name: IgnoredUID
+            Value: 1337
+          - Name: AppPorts
+            Value: 8080
+          - Name: ProxyIngressPort
+            Value: 15000
+          - Name: ProxyEgressPort
+            Value: 15001
+          - Name: EgressIgnoredIPs
+            Value: 169.254.170.2,169.254.169.254
+
+  # Service is a resource which allows to run multiple copies of a type of task, and gather up their logs and metrics,
+  # as well as monitor the number of running tasks and replace any that have crashed
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub '${Environment}-${Platform}-${AppName}-SERVICE-02'
+      Cluster:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'EcsClusterStackName', 'EcsClusterName' ] ]
+      LaunchType: FARGATE
+      PlatformVersion: 1.4.0
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: 1
+      TaskDefinition: !Ref ECSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ContainerSecurityGroupId' ] ]
+          Subnets:
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetOne' ] ]
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt DiscoveryService.Arn

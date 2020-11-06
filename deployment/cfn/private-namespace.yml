@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates AWS Cloud Map private DNS namespace
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+  VpcStackName:
+    Type: String
+    Description: Name of the stack which is used to create VPC and Subnets
+Resources:
+  ServiceDiscoveryPrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Description: AWS Cloud Map private DNS namespace for resources for demo application
+      Name: internal-dev-am
+      Vpc:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'VPCId' ] ]
+Outputs:
+  ServiceDiscoveryPrivateNamespace:
+    Description: Service discovery private namespace id
+    Value: !Ref ServiceDiscoveryPrivateNamespace
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'ServiceDiscoveryPrivateNamespaceId' ] ]
