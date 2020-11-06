@@ -3,7 +3,7 @@ services:
   gateway:
     image: asakchris/service-mesh-gateway:1.0.0-SNAPSHOT
     environment:
-      - COLOR_SERVICE_URL: 'http://localhost:8002'
+      - COLOR_SERVICE_URL=http://color-red:8080
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -13,9 +13,9 @@ services:
       timeout: 30s
       retries: 5
   color-red:
-    image: asakchris/api-gateway-color:1.0.0-SNAPSHOT
+    image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
     environment:
-      - APP_COLOR: 'Red'
+      - APP_COLOR=Red
     ports:
       - "8000:8080"
       - "8001:8081"
@@ -25,9 +25,9 @@ services:
       timeout: 30s
       retries: 5
   color-green:
-    image: asakchris/api-gateway-color:1.0.0-SNAPSHOT
+    image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
     environment:
-      - APP_COLOR: 'Green'
+      - APP_COLOR=Green
     ports:
       - "8002:8080"
       - "8003:8081"
@@ -37,9 +37,9 @@ services:
       timeout: 30s
       retries: 5
   color-blue:
-    image: asakchris/api-gateway-color:1.0.0-SNAPSHOT
+    image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
     environment:
-      - APP_COLOR: 'Blue'
+      - APP_COLOR=Blue
     ports:
       - "8004:8080"
       - "8005:8081"

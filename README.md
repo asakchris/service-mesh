@@ -31,6 +31,10 @@ Environment Variables: SERVER_PORT=8004;MANAGEMENT_SERVER_PORT=8005;APP_COLOR=Bl
 ###### docker compose
 ```
 docker-compose up -d
+docker-compose ps
+docker-compose down
+
+docker-compose logs -f --tail="all"
 ```
 
 ### Test
