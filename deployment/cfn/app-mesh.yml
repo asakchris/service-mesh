@@ -25,7 +25,7 @@ Resources:
               Port: 8080
               Protocol: http
             HealthCheck:
-              Port: 8081
+              #Port: 8081
               Protocol: http
               Path: '/actuator/health'
               HealthyThreshold: 2
@@ -46,7 +46,7 @@ Resources:
               Port: 8080
               Protocol: http
             HealthCheck:
-              Port: 8081
+              #Port: 8081
               Protocol: http
               Path: '/actuator/health'
               HealthyThreshold: 2
@@ -64,7 +64,7 @@ Resources:
       Spec:
         Listeners:
           - PortMapping:
-              Port: 8080
+              #Port: 8080
               Protocol: http
             HealthCheck:
               Port: 8081

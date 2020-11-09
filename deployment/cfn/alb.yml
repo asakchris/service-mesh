@@ -66,7 +66,8 @@ Resources:
       Name: !Sub '${Environment}-${Platform}-GATEWAY-TG-01'
       TargetType: ip
       HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /actuator/health
+      #HealthCheckPath: /actuator/health
+      HealthCheckPath: /api/v1/gw/actuator/health
       HealthCheckProtocol: HTTP
       HealthCheckPort: 8081
       HealthCheckTimeoutSeconds: 5
