@@ -168,7 +168,7 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           SecurityGroups:
-            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ContainerSecurityGroupId' ] ]
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ColorContainerSecurityGroupId' ] ]
           Subnets:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetOne' ] ]
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
