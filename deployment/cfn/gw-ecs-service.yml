@@ -75,8 +75,8 @@ Resources:
         - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
           Image: asakchris/service-mesh-gateway:1.0.0-SNAPSHOT
           DependsOn:
-            ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
-            Condition: HEALTHY
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
+              Condition: HEALTHY
           PortMappings:
             - ContainerPort: 8080
             - ContainerPort: 8081

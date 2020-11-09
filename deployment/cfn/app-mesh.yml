@@ -132,7 +132,7 @@ Resources:
       Spec:
         Listeners:
           - PortMapping:
-              Port: 9080
+              Port: 8080
               Protocol: http
         ServiceDiscovery:
           DNS:

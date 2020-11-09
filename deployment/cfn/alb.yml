@@ -69,7 +69,7 @@ Resources:
       #HealthCheckPath: /actuator/health
       HealthCheckPath: /api/v1/gw/actuator/health
       HealthCheckProtocol: HTTP
-      HealthCheckPort: 8081
+      #HealthCheckPort: 8081
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
