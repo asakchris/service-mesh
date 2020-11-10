@@ -13,6 +13,10 @@ Parameters:
     Type: String
     Default: 'GW'
     Description: Application Name
+  ContainerPort:
+    Type: Number
+    Description: Port number to use for applications
+    Default: 8080
   AlbStackName:
     Type: String
     Description: Name of the stack which is used to create ALB and Target Groups
@@ -31,6 +35,12 @@ Parameters:
   SecurityGroupStackName:
     Type: String
     Description: Name of the stack used to create security group
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
+  RedColorEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Red Color ECS Service
 Resources:
   # Cloud watch log group to which container send logs
   LogGroup:
@@ -38,23 +48,6 @@ Resources:
     Properties:
       LogGroupName: !Sub '/ECS/${Environment}/${Platform}/${AppName}'
       RetentionInDays: 1
-
-  # Service discovery for Gateway service, DnsConfig property specifies the DNS records that are automatically created
-  # in Amazon Route 53 when your Amazon ECS task is registered with the service discovery service
-  DiscoveryService:
-    Type: AWS::ServiceDiscovery::Service
-    Properties:
-      Description: Discovery Service for Gateway service
-      Name: gateway
-      DnsConfig:
-        NamespaceId:
-          Fn::ImportValue: !Join [ ':', [ !Ref 'PrivateNamespaceStackName', 'ServiceDiscoveryPrivateNamespaceId' ] ]
-        #RoutingPolicy: MULTIVALUE
-        DnsRecords:
-          - TTL: 60
-            Type: A
-      HealthCheckCustomConfig:
-        FailureThreshold: 1
 
   # The task definition. This is a simple metadata description of what container to run,
   # and what resource requirements it has.
@@ -77,12 +70,19 @@ Resources:
           DependsOn:
             - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
               Condition: HEALTHY
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
-            - ContainerPort: 8080
-            - ContainerPort: 8081
+            - ContainerPort: !Ref ContainerPort
+            #- ContainerPort: 8081
           Environment:
             - Name: COLOR_SERVICE_URL
-              Value: color.internal-dev-am:8080
+              Value:
+                Fn::Join:
+                  - ''
+                  - - Fn::ImportValue: !Join [ ':', [ !Ref 'RedColorEcsServiceStackName', 'ColorVirtualServiceName' ] ]
+                    - ':'
+                    - !Sub '${ContainerPort}'
             - Name: JAVA_OPTS
               Value: -XshowSettings:vm -XX:+PrintFlagsFinal
           LogConfiguration:
@@ -94,6 +94,9 @@ Resources:
         - Name: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
           Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
           User: 1337
+          DependsOn:
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
             - ContainerPort: 9901
             - ContainerPort: 15000
@@ -106,11 +109,13 @@ Resources:
             Command: [ "CMD-SHELL","curl -s http://localhost:9901/server_info | grep state | grep -q LIVE" ]
             Interval: 5
             Retries: 3
-            StartPeriod: 15
+            StartPeriod: 5
             Timeout: 2
           Environment:
             - Name: APPMESH_VIRTUAL_NODE_NAME
-              Value: !Sub mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-vn
+              Value: !Sub 'mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-node'
+            - Name: ENABLE_ENVOY_DOG_STATSD
+              Value: 1
             - Name: ENABLE_ENVOY_STATS_TAGS
               Value: 1
             - Name: ENABLE_ENVOY_XRAY_TRACING
@@ -124,8 +129,8 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: envoy
         - Name: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
-          Cpu: 32
-          MemoryReservation: 256
+          #Cpu: 32
+          #MemoryReservation: 256
           Image: amazon/aws-xray-daemon
           User: 1337
           PortMappings:
@@ -144,7 +149,7 @@ Resources:
           - Name: IgnoredUID
             Value: 1337
           - Name: AppPorts
-            Value: 8080
+            Value: !Ref ContainerPort
           - Name: ProxyIngressPort
             Value: 15000
           - Name: ProxyEgressPort
@@ -177,8 +182,26 @@ Resources:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       LoadBalancers:
         - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-APP'
-          ContainerPort: 8080
+          ContainerPort: !Ref ContainerPort
           TargetGroupArn:
             Fn::ImportValue: !Join [ ':', [ !Ref 'AlbStackName', 'GatewayTargetGroupArn' ] ]
-      ServiceRegistries:
-        - RegistryArn: !GetAtt DiscoveryService.Arn
+
+  GatewayVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualNodeName: gateway-node
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: !Ref ContainerPort
+              Protocol: http
+        ServiceDiscovery:
+          DNS:
+            Hostname:
+              Fn::ImportValue: !Join [ ':', [ !Ref 'AlbStackName', 'AlbDNSName' ] ]
+        Backends:
+          - VirtualService:
+              VirtualServiceName:
+                Fn::ImportValue: !Join [ ':', [ !Ref 'RedColorEcsServiceStackName', 'ColorVirtualServiceName' ] ]

@@ -75,6 +75,9 @@ Resources:
       UnhealthyThresholdCount: 2
       Port: 8080
       Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 60
       VpcId:
         Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'VPCId' ] ]
   GatewayLoadBalancerRule:
@@ -94,6 +97,11 @@ Outputs:
     Value: !Join [ '', [ 'http://', !GetAtt 'PublicLoadBalancer.DNSName' ] ]
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'AlbUrl' ] ]
+  AlbDNSName:
+    Description: The DNS name of the public load balancer
+    Value: !GetAtt 'PublicLoadBalancer.DNSName'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'AlbDNSName' ] ]
   GatewayTargetGroup:
     Description: Gateway Service target group ARN
     Value: !Ref 'GatewayTargetGroup'

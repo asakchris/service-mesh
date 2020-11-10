@@ -13,6 +13,10 @@ Parameters:
     Type: String
     Default: 'COLOR-RED'
     Description: Application Name
+  ContainerPort:
+    Type: Number
+    Description: Port number to use for applications
+    Default: 8080
   PrivateNamespaceStackName:
     Type: String
     Description: Name of the stack which is used to create Private Namespace
@@ -28,6 +32,9 @@ Parameters:
   SecurityGroupStackName:
     Type: String
     Description: Name of the stack used to create security group
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
 Resources:
   # Cloud watch log group to which container send logs
   LogGroup:
@@ -71,12 +78,21 @@ Resources:
       ContainerDefinitions:
         - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
           Image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
+          Essential: true
           DependsOn:
             - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
               Condition: HEALTHY
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
-            - ContainerPort: 8080
-            - ContainerPort: 8081
+            - ContainerPort: !Ref ContainerPort
+            #- ContainerPort: 8081
+          HealthCheck:
+            Command: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1" ]
+            Interval: 30
+            Retries: 3
+            StartPeriod: 15
+            Timeout: 10
           Environment:
             - Name: APP_COLOR
               Value: Red
@@ -90,7 +106,11 @@ Resources:
               awslogs-stream-prefix: app
         - Name: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
           Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
+          Essential: true
           User: 1337
+          DependsOn:
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
             - ContainerPort: 9901
             - ContainerPort: 15000
@@ -100,17 +120,19 @@ Resources:
               SoftLimit: 15000
               HardLimit: 15000
           HealthCheck:
-            Command: [ "CMD-SHELL","curl -s http://localhost:9901/server_info | grep state | grep -q LIVE" ]
+            Command: [ "CMD-SHELL", "curl -s http://localhost:9901/server_info | grep state | grep -q LIVE" ]
             Interval: 5
             Retries: 3
             StartPeriod: 15
             Timeout: 2
           Environment:
             - Name: APPMESH_VIRTUAL_NODE_NAME
-              Value: !Sub mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-vn
+              Value: !Sub 'mesh/${Environment}-${Platform}-MESH/virtualNode/red-color-node'
             - Name: ENABLE_ENVOY_STATS_TAGS
               Value: 1
             - Name: ENABLE_ENVOY_XRAY_TRACING
+              Value: 1
+            - Name: ENABLE_ENVOY_DOG_STATSD
               Value: 1
             - Name: ENVOY_LOG_LEVEL
               Value: debug
@@ -121,9 +143,10 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: envoy
         - Name: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
-          Cpu: 32
-          MemoryReservation: 256
+          #Cpu: 32
+          #MemoryReservation: 256
           Image: amazon/aws-xray-daemon
+          Essential: true
           User: 1337
           PortMappings:
             - ContainerPort: 2000
@@ -141,7 +164,7 @@ Resources:
           - Name: IgnoredUID
             Value: 1337
           - Name: AppPorts
-            Value: 8080
+            Value: !Ref ContainerPort
           - Name: ProxyIngressPort
             Value: 15000
           - Name: ProxyEgressPort
@@ -174,3 +197,42 @@ Resources:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
+
+  ColorVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualNodeName: red-color-node
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: !Ref ContainerPort
+              Protocol: http
+        ServiceDiscovery:
+          AWSCloudMap:
+            NamespaceName: 'internal-dev-am'
+            ServiceName: !GetAtt DiscoveryService.Name
+            Attributes:
+              - Key: 'ECS_TASK_DEFINITION_FAMILY'
+                Value: !Sub '${Environment}-${Platform}-${AppName}-TD-02'
+  ColorVirtualService:
+    Type: AWS::AppMesh::VirtualService
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualServiceName:
+        Fn::Join:
+          - '.'
+          - - !GetAtt DiscoveryService.Name
+            - 'dev-am.mesh.local'
+      Spec:
+        Provider:
+          VirtualNode:
+            VirtualNodeName: !GetAtt ColorVirtualNode.VirtualNodeName
+Outputs:
+  ColorVirtualServiceName:
+    Description: Color Virtual Service Name
+    Value: !GetAtt ColorVirtualService.VirtualServiceName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'ColorVirtualServiceName' ] ]

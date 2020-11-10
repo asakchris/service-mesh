@@ -58,27 +58,22 @@
       ]
     },
     {
-      "groupName": "ecsServices",
+      "groupName": "ecsServicesDependency",
+      "groupStacks": [
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-RED",
+          "templateFile": "${cfn_dir}/red-color-ecs-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/RedColorEcsService.json"
+        }
+      ]
+    },
+    {
+      "groupName": "ecsServicesDependent",
       "groupStacks": [
         {
           "stackName": "${app_environment}-${app_name}-ECS-SERVICE-GW",
           "templateFile": "${cfn_dir}/gw-ecs-service.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/GatewayEcsService.json"
-        },
-        {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-RED",
-          "templateFile": "${cfn_dir}/red-color-ecs-service.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/RedColorEcsService.json"
-        },
-        {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-GREEN",
-          "templateFile": "${cfn_dir}/green-color-ecs-service.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/GreenColorEcsService.json"
-        },
-        {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-BLUE",
-          "templateFile": "${cfn_dir}/blue-color-ecs-service.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/BlueColorEcsService.json"
         }
       ]
     }
