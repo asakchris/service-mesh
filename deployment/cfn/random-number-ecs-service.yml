@@ -11,7 +11,7 @@ Parameters:
     Description: Platform Name
   AppName:
     Type: String
-    Default: 'COLOR-RED'
+    Default: 'RANDOM-NUMBER'
     Description: Application Name
   ContainerPort:
     Type: Number
@@ -52,7 +52,7 @@ Resources:
     Type: AWS::ServiceDiscovery::Service
     Properties:
       Description: Discovery Service for Gateway service
-      Name: color-red
+      Name: random-number
       DnsConfig:
         NamespaceId:
           Fn::ImportValue: !Join [ ':', [ !Ref 'PrivateNamespaceStackName', 'ServiceDiscoveryPrivateNamespaceId' ] ]
@@ -63,12 +63,12 @@ Resources:
       HealthCheckCustomConfig:
         FailureThreshold: 1
 
-  ColorVirtualNode:
+  VirtualNode:
     Type: AWS::AppMesh::VirtualNode
     Properties:
       MeshName:
         Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
-      VirtualNodeName: red-color-node
+      VirtualNodeName: random-number-node
       Spec:
         Listeners:
           - PortMapping:
@@ -80,14 +80,14 @@ Resources:
             ServiceName: !GetAtt DiscoveryService.Name
             Attributes:
               - Key: 'ECS_TASK_DEFINITION_FAMILY'
-                Value: !Sub '${Environment}-${Platform}-${AppName}-TD-02'
+                Value: !Sub '${Environment}-${Platform}-${AppName}-TD-05'
 
   # The task definition. This is a simple metadata description of what container to run,
   # and what resource requirements it has.
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub '${Environment}-${Platform}-${AppName}-TD-02'
+      Family: !Sub '${Environment}-${Platform}-${AppName}-TD-05'
       Cpu: 512
       Memory: 1024
       NetworkMode: awsvpc
@@ -99,7 +99,7 @@ Resources:
         Fn::ImportValue: !Join [ ':', [ !Ref 'RoleStackName', 'ECSTaskRoleArn' ] ]
       ContainerDefinitions:
         - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
-          Image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
+          Image: asakchris/service-mesh-random:1.0.0-SNAPSHOT
           Essential: true
           DependsOn:
             - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
@@ -149,7 +149,7 @@ Resources:
             Timeout: 2
           Environment:
             - Name: APPMESH_RESOURCE_ARN
-              Value: !Ref ColorVirtualNode
+              Value: !Ref VirtualNode
             #- Name: APPMESH_VIRTUAL_NODE_NAME
               #Value: !Sub 'mesh/${Environment}-${Platform}-MESH/virtualNode/red-color-node'
             - Name: ENABLE_ENVOY_STATS_TAGS
@@ -201,7 +201,7 @@ Resources:
   ECSService:
     Type: AWS::ECS::Service
     Properties:
-      ServiceName: !Sub '${Environment}-${Platform}-${AppName}-SERVICE-02'
+      ServiceName: !Sub '${Environment}-${Platform}-${AppName}-SERVICE-05'
       Cluster:
         Fn::ImportValue: !Join [ ':', [ !Ref 'EcsClusterStackName', 'EcsClusterName' ] ]
       LaunchType: FARGATE
@@ -222,7 +222,7 @@ Resources:
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
 
-  ColorVirtualService:
+  VirtualService:
     Type: AWS::AppMesh::VirtualService
     Properties:
       MeshName:
@@ -230,15 +230,15 @@ Resources:
       VirtualServiceName:
         Fn::Join:
           - '.'
-          - - 'color-vs'
+          - - 'random-number-vs'
             - !Ref DnsNamespaceName
       Spec:
         Provider:
           VirtualNode:
-            VirtualNodeName: !GetAtt ColorVirtualNode.VirtualNodeName
+            VirtualNodeName: !GetAtt VirtualNode.VirtualNodeName
 Outputs:
   VirtualServiceName:
-    Description: Color Virtual Service Name
-    Value: !GetAtt ColorVirtualService.VirtualServiceName
+    Description: Virtual Service Name
+    Value: !GetAtt VirtualService.VirtualServiceName
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualServiceName' ] ]

@@ -11,6 +11,7 @@
   <modules>
     <module>gateway</module>
     <module>color</module>
+    <module>random</module>
   </modules>
 
   <parent>

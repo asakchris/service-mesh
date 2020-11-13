@@ -12,7 +12,7 @@
       ]
     },
     {
-      "groupName": "securityGroupAndRole",
+      "groupName": "securityGroupRoleNlbEcsClusterPrivateNamespaceAppMesh",
       "groupStacks": [
         {
           "stackName": "${app_environment}-${app_name}-SECURITY-GROUP",
@@ -23,16 +23,11 @@
           "stackName": "${app_environment}-${app_name}-ROLE",
           "templateFile": "${cfn_dir}/role.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/Role.json"
-        }
-      ]
-    },
-    {
-      "groupName": "albEcsClusterPrivateNamespace",
-      "groupStacks": [
+        },
         {
-          "stackName": "${app_environment}-${app_name}-ALB",
-          "templateFile": "${cfn_dir}/alb.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/Alb.json"
+          "stackName": "${app_environment}-${app_name}-NLB",
+          "templateFile": "${cfn_dir}/nlb.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/Nlb.json"
         },
         {
           "stackName": "${app_environment}-${app_name}-ECS-CLUSTER",
@@ -43,17 +38,11 @@
           "stackName": "${app_environment}-${app_name}-PRIVATE-NAMESPACE",
           "templateFile": "${cfn_dir}/private-namespace.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/PrivateNamespace.json"
-        }
-      ]
-    },
-    {
-      "groupName": "appMesh",
-      "groupStacks": [
+        },
         {
           "stackName": "${app_environment}-${app_name}-APP-MESH",
           "templateFile": "${cfn_dir}/app-mesh.yml",
-          "paramFile": "${cfn_dir}/env/${app_environment}/AppMesh.json",
-          "canBeDeleted": "No"
+          "paramFile": "${cfn_dir}/env/${app_environment}/AppMesh.json"
         }
       ]
     },
@@ -64,6 +53,11 @@
           "stackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-RED",
           "templateFile": "${cfn_dir}/red-color-ecs-service.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/RedColorEcsService.json"
+        },
+        {
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-RANDOM-NUMBER",
+          "templateFile": "${cfn_dir}/random-number-ecs-service.yml",
+          "paramFile": "${cfn_dir}/env/${app_environment}/RandomNumberEcsService.json"
         }
       ]
     },
@@ -71,8 +65,8 @@
       "groupName": "ecsServicesDependent",
       "groupStacks": [
         {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-GW",
-          "templateFile": "${cfn_dir}/gw-ecs-service.yml",
+          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-GATEWAY",
+          "templateFile": "${cfn_dir}/gateway-ecs-service.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/GatewayEcsService.json"
         }
       ]

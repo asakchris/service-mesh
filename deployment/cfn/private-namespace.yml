@@ -12,35 +12,17 @@ Parameters:
   VpcStackName:
     Type: String
     Description: Name of the stack which is used to create VPC and Subnets
+  DnsNamespaceName:
+    Type: String
+    Description: Name of the private DNS namespace
 Resources:
   ServiceDiscoveryPrivateNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
       Description: AWS Cloud Map private DNS namespace for resources for demo application
-      Name: internal-dev-am
+      Name: !Ref DnsNamespaceName
       Vpc:
         Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'VPCId' ] ]
-  AppMeshHostedZone:
-    Type: AWS::Route53::HostedZone
-    Properties:
-      Name: 'dev-am.mesh.local'
-      HostedZoneConfig:
-        Comment: Private hosted zone for resolving virtual-services
-      VPCs:
-        - VPCId:
-            Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'VPCId' ] ]
-          VPCRegion: !Ref 'AWS::Region'
-  AppMeshWildcardRecordSet:
-    Type: AWS::Route53::RecordSet
-    DependsOn:
-      - AppMeshHostedZone
-    Properties:
-      HostedZoneId: !Ref AppMeshHostedZone
-      ResourceRecords:
-        - '1.2.3.4'
-      TTL: '900'
-      Name: '*.dev-am.mesh.local'
-      Type: A
 Outputs:
   ServiceDiscoveryPrivateNamespace:
     Description: Service discovery private namespace id

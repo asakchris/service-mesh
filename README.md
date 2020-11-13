@@ -28,6 +28,10 @@ Environment Variables: APP_SERVER_PORT=8002;APP_MANAGEMENT_SERVER_PORT=8003;APP_
 ```
 Environment Variables: APP_SERVER_PORT=8004;APP_MANAGEMENT_SERVER_PORT=8005;APP_COLOR=Blue
 ```
+- Random Number Service
+```
+Environment Variables: APP_SERVER_PORT=8010;APP_MANAGEMENT_SERVER_PORT=8011
+```
 ###### docker compose
 ```
 docker-compose up -d
@@ -58,4 +62,9 @@ http://localhost:8002/actuator/health
 ```
 http://localhost:8004/color
 http://localhost:8004/actuator/health
+```
+- Random Number Service
+```
+http://localhost:8010/random-number
+http://localhost:8010/actuator/health
 ```
