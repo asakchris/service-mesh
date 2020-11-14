@@ -237,8 +237,8 @@ Resources:
           VirtualNode:
             VirtualNodeName: !GetAtt ColorVirtualNode.VirtualNodeName
 Outputs:
-  VirtualServiceName:
-    Description: Color Virtual Service Name
-    Value: !GetAtt ColorVirtualService.VirtualServiceName
+  VirtualNodeName:
+    Description: Color Virtual Node Name
+    Value: !GetAtt ColorVirtualNode.VirtualNodeName
     Export:
-      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualServiceName' ] ]
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualNodeName' ] ]

@@ -6,7 +6,5 @@
   "EcsClusterStackName": "${app_environment}-${app_name}-ECS-CLUSTER",
   "VpcStackName": "${app_environment}-${app_name}-VPC",
   "SecurityGroupStackName": "${app_environment}-${app_name}-SECURITY-GROUP",
-  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH",
-  "RedColorEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-RED",
-  "RandomNumberEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-RANDOM-NUMBER"
+  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH"
 }

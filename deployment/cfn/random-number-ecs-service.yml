@@ -221,24 +221,9 @@ Resources:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
-
-  VirtualService:
-    Type: AWS::AppMesh::VirtualService
-    Properties:
-      MeshName:
-        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
-      VirtualServiceName:
-        Fn::Join:
-          - '.'
-          - - 'random-number-vs'
-            - !Ref DnsNamespaceName
-      Spec:
-        Provider:
-          VirtualNode:
-            VirtualNodeName: !GetAtt VirtualNode.VirtualNodeName
 Outputs:
-  VirtualServiceName:
-    Description: Virtual Service Name
-    Value: !GetAtt VirtualService.VirtualServiceName
+  VirtualNodeName:
+    Description: Random Number Virtual Node Name
+    Value: !GetAtt VirtualNode.VirtualNodeName
     Export:
-      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualServiceName' ] ]
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualNodeName' ] ]

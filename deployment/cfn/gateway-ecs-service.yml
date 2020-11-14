@@ -38,12 +38,6 @@ Parameters:
   AppMeshStackName:
     Type: String
     Description: Name of the stack used to create app mesh
-  RedColorEcsServiceStackName:
-    Type: String
-    Description: Name of the stack used to create Red Color ECS Service
-  RandomNumberEcsServiceStackName:
-    Type: String
-    Description: Name of the stack used to create Random Number ECS Service
 Resources:
   # Cloud watch log group to which container send logs
   LogGroup:
@@ -183,36 +177,9 @@ Resources:
             Fn::ImportValue: !Join [ ':', [ !Ref 'NlbStackName', 'TargetGroupArn' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
-
-  ColorGatewayRoute:
-    Type: AWS::AppMesh::GatewayRoute
-    Properties:
-      GatewayRouteName: color-route
-      MeshName:
-        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
-      VirtualGatewayName: !GetAtt VirtualGateway.VirtualGatewayName
-      Spec:
-        HttpRoute:
-          Match:
-            Prefix: /color-teller
-          Action:
-            Target:
-              VirtualService:
-                VirtualServiceName:
-                  Fn::ImportValue: !Join [ ':', [ !Ref 'RedColorEcsServiceStackName', 'VirtualServiceName' ] ]
-  RandomNumberGatewayRoute:
-    Type: AWS::AppMesh::GatewayRoute
-    Properties:
-      GatewayRouteName: random-number-route
-      MeshName:
-        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
-      VirtualGatewayName: !GetAtt VirtualGateway.VirtualGatewayName
-      Spec:
-        HttpRoute:
-          Match:
-            Prefix: /random
-          Action:
-            Target:
-              VirtualService:
-                VirtualServiceName:
-                  Fn::ImportValue: !Join [ ':', [ !Ref 'RandomNumberEcsServiceStackName', 'VirtualServiceName' ] ]
+Outputs:
+  VirtualGatewayName:
+    Description: Color Virtual Gateway Name
+    Value: !GetAtt VirtualGateway.VirtualGatewayName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualGatewayName' ] ]

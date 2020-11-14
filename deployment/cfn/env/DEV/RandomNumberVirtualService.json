@@ -1,0 +1,6 @@
+{
+  "Environment": "${app_environment}",
+  "DnsNamespaceName": "dev-am.local",
+  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH",
+  "RandomNumberEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-RANDOM-NUMBER"
+}

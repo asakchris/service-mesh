@@ -1,0 +1,8 @@
+{
+  "Environment": "${app_environment}",
+  "DnsNamespaceName": "dev-am.local",
+  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH",
+  "GatewayEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-GATEWAY",
+  "ColorVirtualServiceStackName": "${app_environment}-${app_name}-COLOR-VIRTUAL-SERVICE",
+  "RandomNumberVirtualServiceStackName": "${app_environment}-${app_name}-RANDOM-NUMBER-VIRTUAL-SERVICE"
+}

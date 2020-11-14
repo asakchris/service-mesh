@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates virtual services for random number
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+  AppName:
+    Type: String
+    Default: 'COLOR'
+    Description: Application Name
+  DnsNamespaceName:
+    Type: String
+    Description: Name of the private DNS namespace
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
+  RandomNumberEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Random Number ECS Service
+Resources:
+  VirtualService:
+    Type: AWS::AppMesh::VirtualService
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualServiceName:
+        Fn::Join:
+          - '.'
+          - - 'random-number-vs'
+            - !Ref DnsNamespaceName
+      Spec:
+        Provider:
+          VirtualNode:
+            VirtualNodeName:
+              Fn::ImportValue: !Join [ ':', [ !Ref 'RandomNumberEcsServiceStackName', 'VirtualNodeName' ] ]
+Outputs:
+  VirtualServiceName:
+    Description: Color Virtual Service Name
+    Value: !GetAtt VirtualService.VirtualServiceName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualServiceName' ] ]

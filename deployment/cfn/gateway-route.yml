@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates routes for virtual gateway
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+  AppName:
+    Type: String
+    Default: 'GW-ROUTE'
+    Description: Application Name
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
+  GatewayEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Gateway ECS Service
+  ColorVirtualServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Color Virtual Service
+  RandomNumberVirtualServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Random Number Virtual Service
+Resources:
+  ColorGatewayRoute:
+    Type: AWS::AppMesh::GatewayRoute
+    Properties:
+      GatewayRouteName: color-route
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualGatewayName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'GatewayEcsServiceStackName', 'VirtualGatewayName' ] ]
+      Spec:
+        HttpRoute:
+          Match:
+            Prefix: /color-teller
+          Action:
+            Target:
+              VirtualService:
+                VirtualServiceName:
+                  Fn::ImportValue: !Join [ ':', [ !Ref 'ColorVirtualServiceStackName', 'VirtualServiceName' ] ]
+  RandomNumberGatewayRoute:
+    Type: AWS::AppMesh::GatewayRoute
+    Properties:
+      GatewayRouteName: random-number-route
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualGatewayName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'GatewayEcsServiceStackName', 'VirtualGatewayName' ] ]
+      Spec:
+        HttpRoute:
+          Match:
+            Prefix: /random
+          Action:
+            Target:
+              VirtualService:
+                VirtualServiceName:
+                  Fn::ImportValue: !Join [ ':', [ !Ref 'RandomNumberVirtualServiceStackName', 'VirtualServiceName' ] ]
