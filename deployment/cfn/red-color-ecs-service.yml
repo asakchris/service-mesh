@@ -221,21 +221,6 @@ Resources:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
-
-  ColorVirtualService:
-    Type: AWS::AppMesh::VirtualService
-    Properties:
-      MeshName:
-        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
-      VirtualServiceName:
-        Fn::Join:
-          - '.'
-          - - 'color-vs'
-            - !Ref DnsNamespaceName
-      Spec:
-        Provider:
-          VirtualNode:
-            VirtualNodeName: !GetAtt ColorVirtualNode.VirtualNodeName
 Outputs:
   VirtualNodeName:
     Description: Color Virtual Node Name

@@ -179,7 +179,7 @@ Resources:
         - RegistryArn: !GetAtt DiscoveryService.Arn
 Outputs:
   VirtualGatewayName:
-    Description: Color Virtual Gateway Name
+    Description: Virtual Gateway Name
     Value: !GetAtt VirtualGateway.VirtualGatewayName
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualGatewayName' ] ]

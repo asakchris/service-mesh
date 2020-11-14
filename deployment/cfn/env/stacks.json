@@ -100,7 +100,7 @@
       "groupName": "gatewayRoute",
       "groupStacks": [
         {
-          "stackName": "${app_environment}-${app_name}-ECS-SERVICE-GATEWAY",
+          "stackName": "${app_environment}-${app_name}-GATEWAY-ROUTE",
           "templateFile": "${cfn_dir}/gateway-route.yml",
           "paramFile": "${cfn_dir}/env/${app_environment}/GatewayRoute.json"
         }
