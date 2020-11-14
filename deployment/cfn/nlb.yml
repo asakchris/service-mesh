@@ -19,9 +19,9 @@ Resources:
       Name: !Sub '${Environment}-${Platform}-PUBLIC-NLB-01'
       Type: network
       Scheme: internet-facing
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: '120'
+      #LoadBalancerAttributes:
+        #- Key: idle_timeout.timeout_seconds
+          #Value: '120'
       Subnets:
         - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PublicSubnetOne' ] ]
         - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PublicSubnetTwo' ] ]

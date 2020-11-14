@@ -58,7 +58,7 @@ Resources:
     Type: AWS::ServiceDiscovery::Service
     Properties:
       Description: Discovery Service for Gateway service
-      Name: color-red
+      Name: gateway
       DnsConfig:
         NamespaceId:
           Fn::ImportValue: !Join [ ':', [ !Ref 'PrivateNamespaceStackName', 'ServiceDiscoveryPrivateNamespaceId' ] ]
