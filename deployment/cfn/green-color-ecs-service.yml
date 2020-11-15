@@ -74,6 +74,13 @@ Resources:
           - PortMapping:
               Port: !Ref ContainerPort
               Protocol: http
+            HealthCheck:
+              Protocol: http
+              Path: '/actuator/health'
+              HealthyThreshold: 2
+              UnhealthyThreshold: 2
+              TimeoutMillis: 10000
+              IntervalMillis: 30000
         ServiceDiscovery:
           AWSCloudMap:
             NamespaceName: !Ref DnsNamespaceName
