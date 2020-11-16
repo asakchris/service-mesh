@@ -1,4 +1,9 @@
 # Service Mesh using AWS App Mesh
+Find below AWS services used in this project:
+- Container Orchestration - Elastic Container Service (Fargate)
+- Service Mesh - AWS App Mesh
+- Service Discovery - AWS Cloud Map
+- Distributed Tracing - AWS X-Ray
 
 ### Architecture
 ![architecture](appmesh.png)
