@@ -1,0 +1,8 @@
+{
+  "Environment": "${app_environment}",
+  "DnsNamespaceName": "dev-am.local",
+  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH",
+  "RedColorEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-RED",
+  "GreenColorEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-GREEN",
+  "BlueColorEcsServiceStackName": "${app_environment}-${app_name}-ECS-SERVICE-COLOR-BLUE"
+}

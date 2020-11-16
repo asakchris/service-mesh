@@ -13,9 +13,16 @@ Parameters:
     Type: String
     Default: 'COLOR-GREEN'
     Description: Application Name
+  ContainerPort:
+    Type: Number
+    Description: Port number to use for applications
+    Default: 8080
   PrivateNamespaceStackName:
     Type: String
     Description: Name of the stack which is used to create Private Namespace
+  DnsNamespaceName:
+    Type: String
+    Description: Name of the private DNS namespace
   RoleStackName:
     Type: String
     Description: Name of the stack which is used to create Roles
@@ -28,6 +35,9 @@ Parameters:
   SecurityGroupStackName:
     Type: String
     Description: Name of the stack used to create security group
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
 Resources:
   # Cloud watch log group to which container send logs
   LogGroup:
@@ -53,12 +63,38 @@ Resources:
       HealthCheckCustomConfig:
         FailureThreshold: 1
 
+  ColorVirtualNode:
+    Type: AWS::AppMesh::VirtualNode
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualNodeName: green-color-node
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: !Ref ContainerPort
+              Protocol: http
+            HealthCheck:
+              Protocol: http
+              Path: '/actuator/health'
+              HealthyThreshold: 2
+              UnhealthyThreshold: 2
+              TimeoutMillis: 10000
+              IntervalMillis: 30000
+        ServiceDiscovery:
+          AWSCloudMap:
+            NamespaceName: !Ref DnsNamespaceName
+            ServiceName: !GetAtt DiscoveryService.Name
+            Attributes:
+              - Key: 'ECS_TASK_DEFINITION_FAMILY'
+                Value: !Sub '${Environment}-${Platform}-${AppName}-TD-03'
+
   # The task definition. This is a simple metadata description of what container to run,
   # and what resource requirements it has.
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub '${Environment}-${Platform}-${AppName}-TD-02'
+      Family: !Sub '${Environment}-${Platform}-${AppName}-TD-03'
       Cpu: 512
       Memory: 1024
       NetworkMode: awsvpc
@@ -71,12 +107,21 @@ Resources:
       ContainerDefinitions:
         - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
           Image: asakchris/service-mesh-color:1.0.0-SNAPSHOT
+          Essential: true
           DependsOn:
             - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
               Condition: HEALTHY
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
-            - ContainerPort: 8080
-            - ContainerPort: 8081
+            - ContainerPort: !Ref ContainerPort
+            #- ContainerPort: 8081
+          HealthCheck:
+            Command: [ "CMD-SHELL", "curl --fail http://localhost:8080/actuator/health || exit 1" ]
+            Interval: 30
+            Retries: 3
+            StartPeriod: 15
+            Timeout: 10
           Environment:
             - Name: APP_COLOR
               Value: Green
@@ -90,6 +135,7 @@ Resources:
               awslogs-stream-prefix: app
         - Name: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
           Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
+          Essential: true
           User: 1337
           PortMappings:
             - ContainerPort: 9901
@@ -106,8 +152,8 @@ Resources:
             StartPeriod: 15
             Timeout: 2
           Environment:
-            - Name: APPMESH_VIRTUAL_NODE_NAME
-              Value: !Sub mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-vn
+            - Name: APPMESH_RESOURCE_ARN
+              Value: !Ref ColorVirtualNode
             - Name: ENABLE_ENVOY_STATS_TAGS
               Value: 1
             - Name: ENABLE_ENVOY_XRAY_TRACING
@@ -121,9 +167,8 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: envoy
         - Name: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
-          Cpu: 32
-          MemoryReservation: 256
           Image: amazon/aws-xray-daemon
+          Essential: true
           User: 1337
           PortMappings:
             - ContainerPort: 2000
@@ -141,7 +186,7 @@ Resources:
           - Name: IgnoredUID
             Value: 1337
           - Name: AppPorts
-            Value: 8080
+            Value: !Ref ContainerPort
           - Name: ProxyIngressPort
             Value: 15000
           - Name: ProxyEgressPort
@@ -154,7 +199,7 @@ Resources:
   ECSService:
     Type: AWS::ECS::Service
     Properties:
-      ServiceName: !Sub '${Environment}-${Platform}-${AppName}-SERVICE-02'
+      ServiceName: !Sub '${Environment}-${Platform}-${AppName}-SERVICE-03'
       Cluster:
         Fn::ImportValue: !Join [ ':', [ !Ref 'EcsClusterStackName', 'EcsClusterName' ] ]
       LaunchType: FARGATE
@@ -168,9 +213,15 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           SecurityGroups:
-            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ColorContainerSecurityGroupId' ] ]
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ContainerSecurityGroupId' ] ]
           Subnets:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetOne' ] ]
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
+Outputs:
+  VirtualNodeName:
+    Description: Color Virtual Node Name
+    Value: !GetAtt ColorVirtualNode.VirtualNodeName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualNodeName' ] ]

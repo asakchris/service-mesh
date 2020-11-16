@@ -34,7 +34,7 @@ Resources:
         - Key: Name
           Value: !Sub 'VPC-${AWS::StackName}'
 
-  # Two public subnets for NAT gateway, donn't deploy any containers in these subnets
+  # Two public subnets for NAT gateway, don't deploy any containers in these subnets
   PublicSubnetOne:
     Type: AWS::EC2::Subnet
     Properties:
@@ -200,6 +200,11 @@ Outputs:
     Value: !Ref 'VPC'
     Export:
       Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VPCId' ] ]
+  VPCCidrBlock:
+    Description: The CidrBlock of the VPC that this stack is deployed in
+    Value: !GetAtt 'VPC.CidrBlock'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VPCCidrBlock' ] ]
   PublicSubnetOne:
     Description: Public subnet one
     Value: !Ref 'PublicSubnetOne'

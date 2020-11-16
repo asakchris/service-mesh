@@ -35,9 +35,9 @@ Resources:
             Action: [ 'sts:AssumeRole' ]
       Path: /
       ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
         - 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess'
         - 'arn:aws:iam::aws:policy/AWSAppMeshEnvoyAccess'
+        - 'arn:aws:iam::aws:policy/CloudWatchFullAccess'
 Outputs:
   ECSTaskExecutionRole:
     Description: ARN of ECS task execution role

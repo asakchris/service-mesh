@@ -1,9 +1,10 @@
 {
   "Environment": "${app_environment}",
   "PrivateNamespaceStackName": "${app_environment}-${app_name}-PRIVATE-NAMESPACE",
-  "AlbStackName": "${app_environment}-${app_name}-ALB",
+  "NlbStackName": "${app_environment}-${app_name}-NLB",
   "RoleStackName": "${app_environment}-${app_name}-ROLE",
   "EcsClusterStackName": "${app_environment}-${app_name}-ECS-CLUSTER",
   "VpcStackName": "${app_environment}-${app_name}-VPC",
-  "SecurityGroupStackName": "${app_environment}-${app_name}-SECURITY-GROUP"
+  "SecurityGroupStackName": "${app_environment}-${app_name}-SECURITY-GROUP",
+  "AppMeshStackName": "${app_environment}-${app_name}-APP-MESH"
 }

@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates virtual services for color teller
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV)
+    AllowedValues: [ 'DEV' ]
+  Platform:
+    Type: String
+    Default: 'AM'
+    Description: Platform Name
+  AppName:
+    Type: String
+    Default: 'COLOR'
+    Description: Application Name
+  ApplicationPort:
+    Type: Number
+    Description: Port number to use for applications
+    Default: 8080
+  DnsNamespaceName:
+    Type: String
+    Description: Name of the private DNS namespace
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
+  RedColorEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Red Color ECS Service
+  GreenColorEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Green Color ECS Service
+  BlueColorEcsServiceStackName:
+    Type: String
+    Description: Name of the stack used to create Blue Color ECS Service
+Resources:
+  ColorVirtualRouter:
+    Type: AWS::AppMesh::VirtualRouter
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualRouterName: color-vr
+      Spec:
+        Listeners:
+          - PortMapping:
+              Port: !Ref ApplicationPort
+              Protocol: http
+  ColorRoute:
+    Type: AWS::AppMesh::Route
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualRouterName: !GetAtt ColorVirtualRouter.VirtualRouterName
+      RouteName: color-route
+      Spec:
+        HttpRoute:
+          Action:
+            WeightedTargets:
+              - VirtualNode:
+                  Fn::ImportValue: !Join [ ':', [ !Ref 'RedColorEcsServiceStackName', 'VirtualNodeName' ] ]
+                Weight: 1
+              - VirtualNode:
+                  Fn::ImportValue: !Join [ ':', [ !Ref 'GreenColorEcsServiceStackName', 'VirtualNodeName' ] ]
+                Weight: 1
+              - VirtualNode:
+                  Fn::ImportValue: !Join [ ':', [ !Ref 'BlueColorEcsServiceStackName', 'VirtualNodeName' ] ]
+                Weight: 1
+          Match:
+            Prefix: '/'
+  ColorVirtualService:
+    Type: AWS::AppMesh::VirtualService
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualServiceName:
+        Fn::Join:
+          - '.'
+          - - 'color-vs'
+            - !Ref DnsNamespaceName
+      Spec:
+        Provider:
+          VirtualRouter:
+            VirtualRouterName: !GetAtt ColorVirtualRouter.VirtualRouterName
+Outputs:
+  VirtualServiceName:
+    Description: Color Virtual Service Name
+    Value: !GetAtt ColorVirtualService.VirtualServiceName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualServiceName' ] ]

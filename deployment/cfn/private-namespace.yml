@@ -12,12 +12,15 @@ Parameters:
   VpcStackName:
     Type: String
     Description: Name of the stack which is used to create VPC and Subnets
+  DnsNamespaceName:
+    Type: String
+    Description: Name of the private DNS namespace
 Resources:
   ServiceDiscoveryPrivateNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
       Description: AWS Cloud Map private DNS namespace for resources for demo application
-      Name: internal-dev-am
+      Name: !Ref DnsNamespaceName
       Vpc:
         Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'VPCId' ] ]
 Outputs:

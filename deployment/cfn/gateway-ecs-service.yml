@@ -13,9 +13,13 @@ Parameters:
     Type: String
     Default: 'GW'
     Description: Application Name
-  AlbStackName:
+  ContainerPort:
+    Type: Number
+    Description: Port number to use for applications
+    Default: 9080
+  NlbStackName:
     Type: String
-    Description: Name of the stack which is used to create ALB and Target Groups
+    Description: Name of the stack which is used to create NLB and Target Groups
   PrivateNamespaceStackName:
     Type: String
     Description: Name of the stack which is used to create Private Namespace
@@ -31,6 +35,9 @@ Parameters:
   SecurityGroupStackName:
     Type: String
     Description: Name of the stack used to create security group
+  AppMeshStackName:
+    Type: String
+    Description: Name of the stack used to create app mesh
 Resources:
   # Cloud watch log group to which container send logs
   LogGroup:
@@ -56,14 +63,27 @@ Resources:
       HealthCheckCustomConfig:
         FailureThreshold: 1
 
+  VirtualGateway:
+    Type: AWS::AppMesh::VirtualGateway
+    Properties:
+      MeshName:
+        Fn::ImportValue: !Join [ ':', [ !Ref 'AppMeshStackName', 'MeshName' ] ]
+      VirtualGatewayName: gateway-vg
+      Spec:
+        # The listeners that the mesh endpoint is expected to receive inbound traffic from
+        Listeners:
+          - PortMapping:
+              Port: !Ref ContainerPort
+              Protocol: http
+
   # The task definition. This is a simple metadata description of what container to run,
   # and what resource requirements it has.
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub '${Environment}-${Platform}-${AppName}-TD-01'
-      Cpu: 512
-      Memory: 1024
+      Cpu: 256
+      Memory: 512
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -72,51 +92,41 @@ Resources:
       TaskRoleArn:
         Fn::ImportValue: !Join [ ':', [ !Ref 'RoleStackName', 'ECSTaskRoleArn' ] ]
       ContainerDefinitions:
-        - Name: !Sub '${Environment}-${Platform}-${AppName}-APP'
-          Image: asakchris/service-mesh-gateway:1.0.0-SNAPSHOT
-          DependsOn:
-            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
-              Condition: HEALTHY
-          PortMappings:
-            - ContainerPort: 8080
-            - ContainerPort: 8081
-          Environment:
-            - Name: COLOR_SERVICE_URL
-              Value: color.internal-dev-am:8080
-            - Name: JAVA_OPTS
-              Value: -XshowSettings:vm -XX:+PrintFlagsFinal
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: app
         - Name: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
           Image: 840364872350.dkr.ecr.us-east-1.amazonaws.com/aws-appmesh-envoy:v1.15.1.0-prod
-          User: 1337
+          Essential: true
+          #User: 1337
+          DependsOn:
+            - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
+              Condition: START
           PortMappings:
             - ContainerPort: 9901
-            - ContainerPort: 15000
-            - ContainerPort: 15001
+              Protocol: 'tcp'
+            - ContainerPort: !Ref ContainerPort
+              Protocol: 'tcp'
           Ulimits:
             - Name: nofile
               SoftLimit: 15000
               HardLimit: 15000
           HealthCheck:
-            Command: [ "CMD-SHELL","curl -s http://localhost:9901/server_info | grep state | grep -q LIVE" ]
+            Command:
+              - 'CMD-SHELL'
+              - 'curl -s http://localhost:9901/server_info | grep state | grep -q LIVE'
             Interval: 5
             Retries: 3
-            StartPeriod: 15
+            StartPeriod: 60
             Timeout: 2
           Environment:
-            - Name: APPMESH_VIRTUAL_NODE_NAME
-              Value: !Sub mesh/${Environment}-${Platform}-MESH/virtualNode/gateway-vn
-            - Name: ENABLE_ENVOY_STATS_TAGS
-              Value: 1
-            - Name: ENABLE_ENVOY_XRAY_TRACING
-              Value: 1
+            - Name: APPMESH_RESOURCE_ARN
+              Value: !Ref VirtualGateway
             - Name: ENVOY_LOG_LEVEL
               Value: debug
+            - Name: ENABLE_ENVOY_XRAY_TRACING
+              Value: 1
+            #- Name: APPMESH_VIRTUAL_NODE_NAME
+              #Value: !Sub 'mesh/${Environment}-${Platform}-MESH/virtualGateway/gateway-vg'
+            - Name: ENABLE_ENVOY_STATS_TAGS
+              Value: 1
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -124,9 +134,8 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: envoy
         - Name: !Sub '${Environment}-${Platform}-${AppName}-XRAY'
-          Cpu: 32
-          MemoryReservation: 256
           Image: amazon/aws-xray-daemon
+          Essential: true
           User: 1337
           PortMappings:
             - ContainerPort: 2000
@@ -137,20 +146,6 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: xray
-      ProxyConfiguration:
-        ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
-        Type: APPMESH
-        ProxyConfigurationProperties:
-          - Name: IgnoredUID
-            Value: 1337
-          - Name: AppPorts
-            Value: 8080
-          - Name: ProxyIngressPort
-            Value: 15000
-          - Name: ProxyEgressPort
-            Value: 15001
-          - Name: EgressIgnoredIPs
-            Value: 169.254.170.2,169.254.169.254
 
   # Service is a resource which allows to run multiple copies of a type of task, and gather up their logs and metrics,
   # as well as monitor the number of running tasks and replace any that have crashed
@@ -171,14 +166,20 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           SecurityGroups:
-            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'GatewayContainerSecurityGroupId' ] ]
+            - Fn::ImportValue: !Join [ ':', [ !Ref 'SecurityGroupStackName', 'ContainerSecurityGroupId' ] ]
           Subnets:
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetOne' ] ]
             - Fn::ImportValue: !Join [ ':', [ !Ref 'VpcStackName', 'PrivateSubnetTwo' ] ]
       LoadBalancers:
-        - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-APP'
-          ContainerPort: 8080
+        - ContainerName: !Sub '${Environment}-${Platform}-${AppName}-ENVOY'
+          ContainerPort: !Ref ContainerPort
           TargetGroupArn:
-            Fn::ImportValue: !Join [ ':', [ !Ref 'AlbStackName', 'GatewayTargetGroupArn' ] ]
+            Fn::ImportValue: !Join [ ':', [ !Ref 'NlbStackName', 'TargetGroupArn' ] ]
       ServiceRegistries:
         - RegistryArn: !GetAtt DiscoveryService.Arn
+Outputs:
+  VirtualGatewayName:
+    Description: Virtual Gateway Name
+    Value: !GetAtt VirtualGateway.VirtualGatewayName
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VirtualGatewayName' ] ]
