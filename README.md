@@ -39,6 +39,8 @@ docker-compose down
 
 docker-compose logs -f --tail="all"
 ```
+###### AWS
+Refer [this](deployment/README.md)
 
 ### Test
 ###### Local
